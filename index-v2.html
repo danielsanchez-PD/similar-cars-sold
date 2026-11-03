@@ -430,11 +430,12 @@ input:checked + .pay__row .radio::after,input:checked ~ .radio::after,input:chec
 
 <!-- ================= PROTOTYPE CHROME ================= -->
 <div class="proto" role="region" aria-label="Prototype controls">
-  <div class="proto__title">CDP · Similar cars sold <span>— A/B/C prototype</span></div>
+  <div class="proto__title">CDP · Similar cars sold <span>— A/B/C/D prototype</span></div>
   <div class="proto__tabs" role="group" aria-label="Variant">
     <button class="proto__tab" data-variant="1" aria-pressed="true">Option 1 <small>· Panel</small></button>
     <button class="proto__tab" data-variant="2" aria-pressed="false">Option 2 <small>· Anchor</small></button>
     <button class="proto__tab" data-variant="3" aria-pressed="false">Option 3 <small>· Minimal</small></button>
+    <button class="proto__tab" data-variant="4" aria-pressed="false">Option 4 <small>· Mixed</small></button>
   </div>
   <label class="proto__group">State
     <select id="proto-state">
@@ -665,6 +666,7 @@ const BRIEF = {
   1:"Option 1 · Entry point in the buy box → side panel (desktop) / bottom sheet (mobile) showing the 2 sold cars with rating + review, and a compact payment choice before continuing.",
   2:"Option 2 · Compact entry point on information-bg (circular car avatars) that anchors to a new ‘Customer reviews’ section placed right above ‘Vehicle details’ — no payment block, the CDP option box above already covers it.",
   3:"Option 3 · Same flow as Option 1, minimalist version: one-line entry point (48px) and a panel with compact rows — score only, no review."
+  ,4:"Option 4 · Option 3’s one-line social proof entry point in the conversion area → Option 1’s side panel / bottom sheet with the 2 cars and rating details, without customer quotes."
 };
 
 /* ---------- State ---------- */
@@ -680,7 +682,7 @@ const CATS = [["process","Purchase process"],["quality","Car quality"],["reviews
 const catRatings = (c, mod="") => `<dl class="cats${mod}">${CATS.map(([k,l])=>`<div><dt>${l}</dt><dd>${starRow(c.cats[k])}<span class="sr-only">${c.cats[k]} out of 5</span></dd></div>`).join("")}</dl>`;
 const chev = cls => `<img class="${cls}" data-img="i-chevron-right" alt="">`;
 
-const soldCard = c => `
+const soldCard = (c, noQuote = false) => `
   <li class="sold">
     <div class="sold__top">
       <img class="sold__photo" data-img="${c.img}" alt="${c.alt}">
@@ -694,7 +696,7 @@ const soldCard = c => `
     <div class="sold__rating">
       <p class="score">${starRow(c.rating)}<b>${c.rating} out of 5</b><span>· ${c.author}</span></p>
       ${catRatings(c)}
-      <p class="quote">“${c.quote}”</p>
+      ${noQuote ? "" : `<p class="quote">“${c.quote}”</p>`}
     </div>
   </li>`;
 
@@ -738,7 +740,8 @@ const ENTRY = {
       <span class="scs-mini__score"><img data-img="i-star-plain" alt="">${AGG.score}<span class="sr-only"> out of 5</span></span>
       ${chev("scs-mini__chev")}</button>`
 };
-const ENTRY_SKEL = v => v===3
+ENTRY[4] = ENTRY[3];
+const ENTRY_SKEL = v => v===3 || v===4
   ? `<div class="skel-entry skel-entry--mini" aria-busy="true" aria-label="Loading"><span class="skel" style="width:46px;height:28px;border-radius:14px"></span><span class="skel" style="flex:1;height:14px"></span><span class="skel" style="width:36px;height:14px"></span></div>`
   : `<div class="skel-entry" aria-busy="true" aria-label="Loading"><span class="skel" style="width:84px;height:32px"></span><span style="flex:1;display:grid;gap:8px"><span class="skel" style="height:16px;width:90%"></span><span class="skel" style="height:12px;width:55%"></span></span></div>`;
 
@@ -758,7 +761,12 @@ const PANEL_BODY = {
       <p class="mhead__txt"><b>Happy customers</b>${AGG.count} verified ratings for similar cars</p>
     </div>
     <ul class="mrow-list">${SOLD.map(miniRow).join("")}</ul>
-    <p class="footnote" style="font-size:12px;line-height:16px">Ratings from verified customers after receiving their car.</p>`
+    <p class="footnote" style="font-size:12px;line-height:16px">Ratings from verified customers after receiving their car.</p>`,
+  4: () => `
+    <p>Other customers bought these cars, similar to this one, on Autohero. Here’s how they rated their experience:</p>
+    <p class="agg"><img data-img="i-star" alt=""><b>${AGG.score} out of 5</b><span>${AGG.count} verified ratings</span></p>
+    <ul class="sold-list">${SOLD.map(c => soldCard(c, true)).join("")}</ul>
+    <p class="footnote">Ratings are from verified customers after receiving their car.</p>`
 };
 
 const inlineSection = () => `
@@ -833,7 +841,7 @@ function openOverlay(trigger){
 }
 function loadPanel(mini){
   const body = $("#ov-body");
-  const show = () => { body.innerHTML = PANEL_BODY[mini ? 3 : 1](); hydrate(body); };
+  const show = () => { body.innerHTML = PANEL_BODY[mini ? 3 : S.variant === 4 ? 4 : 1](); hydrate(body); };
   if (S.data === "loading"){ body.innerHTML = panelSkel(mini); setTimeout(show, 1200); }
   else if (S.data === "error"){
     body.innerHTML = `<div class="ov-error" role="alert"><p><b style="color:var(--c-text)">We couldn’t load the ratings.</b><br>Check your connection and try again. You can still continue with your purchase.</p><button class="btn btn--ghost" id="ov-retry">Try again</button></div>`;
@@ -943,7 +951,7 @@ $$(".proto__tab").forEach(b => b.addEventListener("click", () => { if (!ov.hidde
 $("#proto-state").addEventListener("change", e => { S.data = e.target.value; render(); });
 $("#proto-entry-bg").addEventListener("change", e => { S.entryBg = e.target.value; render(); });
 addEventListener("resize", updateMeta);
-const m = location.hash.match(/^#v([123])$/); if (m) S.variant = +m[1];
+const m = location.hash.match(/^#v([1234])$/); if (m) S.variant = +m[1];
 hydrate(); render();
 // Review hooks: ?open opens the overlay, ?pay=fin preselects, ?err triggers validation
 const q = new URLSearchParams(location.search);
